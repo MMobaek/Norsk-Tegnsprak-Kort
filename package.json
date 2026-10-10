@@ -8,20 +8,17 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc",
-    "test": "tsx integration-test.ts && tsx import-test.ts && tsx session-test.ts && tsx anki-test.ts && tsx tsv-test.ts"
+    "test": "tsx integration-test.ts && tsx import-test.ts"
   },
   "dependencies": {
     "dexie": "^4.0.8",
-    "fflate": "^0.8.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "sql.js": "^1.14.2",
     "zustand": "^4.5.5"
   },
   "devDependencies": {
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
-    "@types/sql.js": "^1.4.11",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.20",
     "fake-indexeddb": "^6.2.5",

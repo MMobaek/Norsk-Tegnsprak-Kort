@@ -14,17 +14,10 @@ export default function App() {
   const setDark = useAppStore((s) => s.setDark);
   const setHc = useAppStore((s) => s.setHc);
   const reviewing = useReviewStore((s) => s.active || s.done);
-  const restoreSession = useReviewStore((s) => s.restoreSession);
 
   useEffect(() => {
     applyTheme();
   }, [dark, hc]);
-
-  useEffect(() => {
-    void restoreSession().then((r) => {
-      if (r?.restored) setView('review');
-    });
-  }, [restoreSession, setView]);
 
   const navBtn = (active: boolean) =>
     `btn-subtle ${active ? 'bg-slate-200 dark:bg-slate-700' : ''}`;

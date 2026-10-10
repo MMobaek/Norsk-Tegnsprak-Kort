@@ -4,20 +4,6 @@ import { getPref, setPref } from '../lib/prefs';
 import { processReview } from '../lib/scheduler';
 import type { Card, Deck, Rating } from '../lib/types';
 
-const SESSION_KEY = 'nts_session';
-
-interface SavedSession {
-  deckId: string | null;
-  queueIds: string[];
-  index: number;
-  revealed: boolean;
-  done: boolean;
-  counts: Record<number, number>;
-  speed: number;
-  loop: boolean;
-  savedAt: number;
-}
-
 interface ReviewState {
   active: boolean;
   busy: boolean;
@@ -32,7 +18,6 @@ interface ReviewState {
   revealStart: number;
   counts: Record<number, number>;
   startSession: (deckId: string | null) => Promise<void>;
-  restoreSession: () => Promise<{ restored: boolean } | null>;
   reveal: () => void;
   rate: (r: Rating) => Promise<void>;
   discard: () => Promise<void>;
@@ -56,76 +41,17 @@ const initial = {
   counts: {} as Record<number, number>
 };
 
-type SetState = (partial: Partial<ReviewState>) => void;
-type GetState = () => ReviewState;
-
-function persist(get: GetState): void {
-  const s = get();
-  try {
-    if (s.active || s.done) {
-      const data: SavedSession = {
-        deckId: s.deck ? s.deck.id : null,
-        queueIds: s.queue.map((c) => c.id),
-        index: s.index,
-        revealed: s.revealed,
-        done: s.done,
-        counts: s.counts,
-        speed: s.speed,
-        loop: s.loop,
-        savedAt: Date.now()
-      };
-      localStorage.setItem(SESSION_KEY, JSON.stringify(data));
-    } else {
-      localStorage.removeItem(SESSION_KEY);
-    }
-  } catch {
-    void 0;
-  }
-}
-
 export const useReviewStore = create<ReviewState>((set, get) => ({
   ...initial,
   startSession: async (deckId) => {
     const deck = deckId ? ((await db.decks.get(deckId)) ?? null) : null;
     const queue = await fetchDue(deckId, 60);
     set({ ...initial, active: true, deck, queue, index: 0, showStart: performance.now() });
-    persist(get);
-  },
-  restoreSession: async () => {
-    try {
-      const raw = localStorage.getItem(SESSION_KEY);
-      if (!raw) return null;
-      const saved = JSON.parse(raw) as SavedSession;
-      if (!saved || !Array.isArray(saved.queueIds)) return null;
-      if (!saved.done && saved.queueIds.length === 0) return null;
-      const cards = await db.cards.bulkGet(saved.queueIds);
-      const queue = cards.filter((c): c is Card => !!c);
-      const deck = saved.deckId ? ((await db.decks.get(saved.deckId)) ?? null) : null;
-      const index = Math.min(Math.max(saved.index ?? 0, 0), Math.max(queue.length - 1, 0));
-      set({
-        ...initial,
-        active: !saved.done,
-        done: !!saved.done,
-        deck,
-        queue,
-        index,
-        revealed: !saved.done && !!saved.revealed,
-        speed: saved.speed ?? 1,
-        loop: saved.loop ?? true,
-        counts: saved.counts ?? {},
-        showStart: performance.now(),
-        revealStart: performance.now()
-      });
-      return { restored: true };
-    } catch {
-      return null;
-    }
   },
   reveal: () => {
     const s = get();
     if (!s.busy && s.active && !s.done && !s.revealed) {
       set({ revealed: true, revealStart: performance.now() });
-      persist(get);
     }
   },
   rate: async (rating) => {
@@ -140,7 +66,6 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
       const counts = { ...s.counts, [rating]: (s.counts[rating] ?? 0) + 1 };
       set({ counts });
       await advance(get, set);
-      persist(get);
     } finally {
       set({ busy: false });
     }
@@ -153,24 +78,17 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
     try {
       await db.cards.update(card.id, { state: 'discarded', dueTimestamp: Number.MAX_SAFE_INTEGER });
       await advance(get, set);
-      persist(get);
     } finally {
       set({ busy: false });
     }
   },
-  stop: () => {
-    set({ ...initial });
-    persist(get);
-  },
-  setSpeed: (speed) => {
-    set({ speed });
-    persist(get);
-  },
-  toggleLoop: () => {
-    set((s) => ({ loop: !s.loop }));
-    persist(get);
-  }
+  stop: () => set({ ...initial }),
+  setSpeed: (speed) => set({ speed }),
+  toggleLoop: () => set((s) => ({ loop: !s.loop }))
 }));
+
+type SetState = (partial: Partial<ReviewState>) => void;
+type GetState = () => ReviewState;
 
 async function advance(get: GetState, set: SetState): Promise<void> {
   const s = get();

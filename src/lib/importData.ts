@@ -78,8 +78,7 @@ export async function importDataset(
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
     const deckId = it.groups[0] ? slugify(it.groups[0]) : 'ukategorisert';
-    const rawVideo = it.video.includes('.') ? it.video : `${it.video}.mp4`;
-    const videoUrl = VIDEO_BASE + encodeURIComponent(rawVideo);
+    const videoUrl = VIDEO_BASE + encodeURIComponent(it.video);
     const [prodId, compId] = await Promise.all([
       uniqueId(usedIds, `${it.video}:production`, `${it.video}:production:${it.description}`),
       uniqueId(usedIds, `${it.video}:comprehension`, `${it.video}:comprehension:${it.description}`)
