@@ -1,0 +1,3 @@
+Dette prosjektet er ment til å øke mengden læreressurser for norsk tegnspråk. Kortene er lagd ved bruk av media fra den norske tegnspråksordboka. Det er mulig å bruke appen for å pugge tegn, men det kan være risiko ved lagring av kortene. Det er heller anbefalt å eksortere kortene med en gang til anki, siden anki er både godt laget og gratis. Programmet bruker ankiConnect for å automatisere produksjonen av kort, slik at det er mulig å vise media. Anki er også en godt utprøvd app for læring.
+
+For å eksportere til anki, må du ha anki installert, og du må legge til pluginen AnkiConnect.
