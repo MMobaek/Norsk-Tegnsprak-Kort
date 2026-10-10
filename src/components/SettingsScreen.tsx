@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { exportToAnki, type AnkiExportResult } from '../lib/anki';
 import { RATING_SCORES, resetBandit, rewardFor } from '../lib/bandit';
 import { db } from '../lib/db';
 import { D0 } from '../lib/fsrs';
@@ -36,6 +37,12 @@ export default function SettingsScreen() {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState<{ done: number; total: number } | null>(
+    null
+  );
+  const [exportResult, setExportResult] = useState<AnkiExportResult | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     void loadStats();
@@ -88,6 +95,22 @@ export default function SettingsScreen() {
     } finally {
       setImporting(false);
       setProgress(null);
+    }
+  }
+
+  async function runExport() {
+    setExporting(true);
+    setExportError(null);
+    setExportResult(null);
+    setExportProgress(null);
+    try {
+      const res = await exportToAnki((done, total) => setExportProgress({ done, total }));
+      setExportResult(res);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setExporting(false);
+      setExportProgress(null);
     }
   }
 
@@ -188,6 +211,44 @@ export default function SettingsScreen() {
           </p>
         )}
         {error && <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>}
+      </section>
+
+      <section className="card space-y-4">
+        <h2 className="text-lg font-semibold">Export to Anki</h2>
+        <p className="text-sm text-slate-500">
+          Sends all imported signs to Anki through the AnkiConnect add-on (localhost:8765). Videos
+          are uploaded as media and cards are placed in the "Norsk Tegnspråk" deck with one
+          subdeck per category. Anki must be running, and your site must be allowed in
+          AnkiConnect's webCorsOriginList setting (e.g. http://localhost*).
+        </p>
+        <button
+          className="btn bg-slate-700 hover:bg-slate-600"
+          onClick={() => void runExport()}
+          disabled={exporting}
+        >
+          {exporting ? 'Exporting…' : 'Export to Anki'}
+        </button>
+        {exportProgress && (
+          <div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+              <div
+                className="h-full bg-slate-600 transition-all"
+                style={{ width: `${Math.round((exportProgress.done / exportProgress.total) * 100)}%` }}
+              />
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              {exportProgress.done}/{exportProgress.total} signs
+            </p>
+          </div>
+        )}
+        {exportResult && (
+          <p className="text-sm text-emerald-700 dark:text-emerald-400">
+            {exportResult.added} cards exported to Anki across {exportResult.decks} subdecks
+            {exportResult.skipped > 0 && ` (${exportResult.skipped} skipped)`}
+            {exportResult.failed > 0 && `, ${exportResult.failed} failed`}.
+          </p>
+        )}
+        {exportError && <p className="text-sm text-rose-600 dark:text-rose-400">{exportError}</p>}
       </section>
 
       <section className="card space-y-4">
